@@ -1,6 +1,10 @@
 import Phaser from "phaser"
 
-let gameState = {}
+let time = 11
+
+let gameState = {
+  timeLeft: time
+}
 
 function checkKeysUp(keys) {
   for (let i=0; i<keys.length; i++) {
@@ -9,6 +13,12 @@ function checkKeysUp(keys) {
     }
   }
   return true
+}
+
+function formatTime(time) {
+  let mins = `${Math.floor(time/60)}`
+  let secs = `${time%60}`
+  return `${mins.padStart(2, "0")}:${secs.padStart(2, "0")}`
 }
 
 //load assets
@@ -35,11 +45,29 @@ function create() {
     })
 
   //ladders
-    const ladders = this.physics.add.staticGroup()
-    const ladderPositions = [489, 454, 419, 384, 349, 314, 279, 244, 209, 174, 139, 104, 69]
-    ladderPositions.forEach(y => {
-      ladders.create(18, y, 'ladder')
-    })
+  const ladders = this.physics.add.staticGroup()
+  const ladderPositions = [489, 454, 419, 384, 349, 314, 279, 244, 209, 174, 139, 104, 69]
+  ladderPositions.forEach(y => {
+    ladders.create(18, y, 'ladder')
+  })
+
+  //timer
+  let timerElements = [
+    this.add.rectangle(286, 75, 572, 40, 0xd2d2d2),
+    gameState.timeText = this.add.text(150, 68, `${formatTime(gameState.timeLeft)}`, { fontFamily: "Arial", color: 0x1d97b5})
+  ]
+  timerElements.forEach((element) => { element.setScrollFactor(0, 0) })
+  this.time.addEvent({
+    delay: 1000,
+    callback: () => {
+      gameState.timeLeft-=1
+    },
+    callbackScope: this,
+    loop: true,
+  })
+
+  //danger overlay
+  gameState.dangerScreen = this.add.rectangle(286, 254, 500, 400, 0xFF0000).setScrollFactor(0, 0).setAlpha(0)
 
   //player
   gameState.player = this.physics.add.sprite(150, 480, "sam")
@@ -74,13 +102,13 @@ function create() {
   })
   this.anims.create({
     key: "falling",
-    frames: this.anims.generateFrameNumbers("sam", { start: 0, end: 2 }),
-    frameRate: 13,
+    frames: this.anims.generateFrameNumbers("sam", { frames: [16, 17]}),
+    frameRate: 8,
     repeat: -1
   })
 
   //camera
-  this.cameras.main.setBounds(-20, -20, 607, 545)
+  this.cameras.main.setBounds(-20, -55, 607, 585)
   this.cameras.main.zoom = 1.3
   this.cameras.main.startFollow(gameState.player, true, 0.5, 0.5)
 
@@ -93,7 +121,6 @@ function create() {
 
   // ladder overlap
   this.physics.add.overlap(gameState.player, ladders, () => {
-      console.log(gameState.player)
       if (gameState.cursors.space.isDown || gameState.cursors.up.isDown || gameState.cursors.w.isDown) {
         gameState.player.setVelocityY(-200)
         gameState.player.anims.play("ladder", true)
@@ -108,14 +135,14 @@ function create() {
 
   //win condition
 
-
-  //lose condition
-
 }
 
 //gameplay
 function update() {
   if (gameState.active) {
+    //update timer
+    gameState.timeText.setText(`${formatTime(gameState.timeLeft)}`)
+
     //travelling or idling
     if (gameState.cursors.right.isDown || gameState.cursors.d.isDown) {
       gameState.player.setVelocityX(250)
@@ -133,7 +160,34 @@ function update() {
     //jump
     if ((gameState.cursors.space.isDown || gameState.cursors.up.isDown || gameState.cursors.w.isDown) && (gameState.player.body.onFloor())) {
       gameState.player.setVelocityY(-500);
-    }  
+    }
+
+    // danger screen
+    if (gameState.timeLeft<=10) {
+      if (gameState.timeLeft%2===0) {
+        gameState.dangerScreen.alpha = 0.4
+      } else {
+        gameState.dangerScreen.alpha = 0
+      }
+    }
+    
+    
+    //end game
+    if (gameState.timeLeft===0) {
+      let loseElements = [ 
+        this.add.rectangle(286, 75, 572, 40, 0xd2d2d2),
+        gameState.loseText = this.add.text(150, 68, `You ran out of time! Click to try again.`, { fontFamily: "Arial", color: 0x1d97b5})
+      ]
+      loseElements.forEach((element) => { element.setScrollFactor(0, 0) })
+      this.physics.pause()
+      gameState.active = false
+      this.anims.pauseAll()
+      this.input.on("pointerup", () => {
+        this.anims.resumeAll()
+        gameState.timeLeft=time
+        this.scene.restart()
+      })
+    }
 
   }
 }
