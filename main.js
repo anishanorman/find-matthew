@@ -1,6 +1,6 @@
 import Phaser from "phaser"
 
-let time = 11
+let time = 15
 
 let gameState = {
   timeLeft: time
@@ -67,7 +67,7 @@ function create() {
   })
 
   //danger overlay
-  gameState.dangerScreen = this.add.rectangle(286, 254, 500, 400, 0xFF0000).setScrollFactor(0, 0).setAlpha(0)
+  gameState.dangerScreen = this.add.rectangle(286, 295, 500, 400, 0xFF0000).setScrollFactor(0, 0).setAlpha(0)
 
   //player
   gameState.player = this.physics.add.sprite(150, 480, "sam")
