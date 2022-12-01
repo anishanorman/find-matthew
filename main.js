@@ -1,9 +1,9 @@
 import Phaser from "phaser"
 
-let time = 15
+let time = 20
 
 let gameState = {
-  timeLeft: time
+  timeLeft: time,
 }
 
 function checkKeysUp(keys) {
@@ -27,15 +27,22 @@ function preload() {
   this.load.image('platform', './assets/platform.png')
   this.load.image('ladder',  './assets/ladder.png')
   this.load.image('background', './assets/office-background.png')
+  this.load.spritesheet('david', "./assets/david-sprite.png", { frameWidth: 32, frameHeight: 36 })
+  this.load.audio("davidSound", './assets/sounds/david-sound.mp3')
 }
 
-//Scene
+//scene
 function create() {
 
   gameState.active = true
+  gameState.canMove = true
 
   // background
   gameState.background = this.add.image(0, 0, "background").setOrigin(0)
+
+  //sounds
+  gameState.sfx = {}
+  gameState.sfx.davidSound = this.sound.add("davidSound")
 
   //platforms
   const platforms = this.physics.add.staticGroup()
@@ -72,11 +79,32 @@ function create() {
   //player
   gameState.player = this.physics.add.sprite(150, 480, "sam")
 
+  //enemies
+  gameState.enemy = this.physics.add.sprite(150, 300, "david")
+
   //colliders
   this.physics.add.collider(gameState.player, platforms)
+  this.physics.add.collider(gameState.enemy, platforms)
   gameState.player.setCollideWorldBounds(true)
+  gameState.enemy.setCollideWorldBounds(true)
 
-  //animations
+  this.physics.add.overlap(gameState.player, gameState.enemy, () => {
+    gameState.sfx.davidSound.play()
+    this.physics.pause()
+    gameState.enemy.move.pause()
+    this.anims.pauseAll()
+    gameState.canMove = false
+    if (gameState.enemy.body.touching.left) {
+      gameState.player.setFrame(9)
+      gameState.enemy.setFrame(2)
+    } else if (gameState.enemy.body.touching.right) {
+      gameState.player.setFrame(3)
+      gameState.enemy.setFrame(1)
+    }
+  })
+
+
+  //sam animations
   this.anims.create({
     key: "run-left",
     frames: this.anims.generateFrameNumbers("sam", { start: 3, end: 5 }),
@@ -107,6 +135,17 @@ function create() {
     repeat: -1
   })
 
+  //david animations
+  this.anims.create({
+    key: "driving",
+    frames: this.anims.generateFrameNumbers("david", { frames: [0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 2, 2, 2, 2, 2, 2, 2, 2]}),
+    frameRate: 6,
+    repeat: -1,
+  })
+  gameState.enemy.anims.play("driving", true)
+
+  
+
   //camera
   this.cameras.main.setBounds(-20, -55, 607, 585)
   this.cameras.main.zoom = 1.3
@@ -133,7 +172,15 @@ function create() {
       }
   })
 
-  //win condition
+  //move david
+  gameState.enemy.move = this.tweens.add({
+    targets: gameState.enemy,
+    x: 400,
+    ease: 'Quad.easeInOut',
+    duration: 1500,
+    repeat: -1,
+    yoyo: true,
+  })
 
 }
 
@@ -144,23 +191,26 @@ function update() {
     gameState.timeText.setText(`${formatTime(gameState.timeLeft)}`)
 
     //travelling or idling
-    if (gameState.cursors.right.isDown || gameState.cursors.d.isDown) {
-      gameState.player.setVelocityX(250)
-      gameState.player.anims.play("run-right", true)
-    } else if (gameState.cursors.left.isDown || gameState.cursors.a.isDown) {
-      gameState.player.setVelocityX(-250)
-      gameState.player.anims.play("run-left", true)
-    } 
-    else if (checkKeysUp(gameState.cursors) && (gameState.player.body.onFloor())){
-      gameState.player.anims.pause()
-      gameState.player.setVelocityX(0) 
-      gameState.player.setFrame(0)
+    if (gameState.canMove) {
+      if (gameState.cursors.right.isDown || gameState.cursors.d.isDown) {
+        gameState.player.setVelocityX(250)
+        gameState.player.anims.play("run-right", true)
+      } else if (gameState.cursors.left.isDown || gameState.cursors.a.isDown) {
+        gameState.player.setVelocityX(-250)
+        gameState.player.anims.play("run-left", true)
+      } 
+      else if (checkKeysUp(gameState.cursors) && (gameState.player.body.onFloor())){
+        gameState.player.anims.pause()
+        gameState.player.setVelocityX(0) 
+        gameState.player.setFrame(0)
+      }
+        
+      //jump
+      if ((gameState.cursors.space.isDown || gameState.cursors.up.isDown || gameState.cursors.w.isDown) && (gameState.player.body.onFloor())) {
+        gameState.player.setVelocityY(-500);
+      }
     }
-      
-    //jump
-    if ((gameState.cursors.space.isDown || gameState.cursors.up.isDown || gameState.cursors.w.isDown) && (gameState.player.body.onFloor())) {
-      gameState.player.setVelocityY(-500);
-    }
+    
 
     // danger screen
     if (gameState.timeLeft<=10) {
@@ -170,7 +220,6 @@ function update() {
         gameState.dangerScreen.alpha = 0
       }
     }
-    
     
     //end game
     if (gameState.timeLeft===0) {
@@ -182,6 +231,7 @@ function update() {
       this.physics.pause()
       gameState.active = false
       this.anims.pauseAll()
+      gameState.enemy.move.stop()
       this.input.on("pointerup", () => {
         this.anims.resumeAll()
         gameState.timeLeft=time
@@ -204,7 +254,7 @@ const config = {
       enableBody: true,
     }
   },
-  scene: { preload, create, update, checkKeysUp }
+  scene: { preload, create, update }
 }
 
 const game = new Phaser.Game(config)
