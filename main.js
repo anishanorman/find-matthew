@@ -29,6 +29,10 @@ function preload() {
   this.load.image('background', './assets/office-background.png')
   this.load.spritesheet('david', "./assets/david-sprite.png", { frameWidth: 32, frameHeight: 36 })
   this.load.audio("davidSound", './assets/sounds/david-sound.mp3')
+  this.load.audio("davidSound2", './assets/sounds/david-sound2.mp3')
+  this.load.audio("guardian-music", "./assets/sounds/guardian-music.mp3")
+  this.load.audio("crash", "./assets/sounds/crash.wav")
+  this.load.spritesheet("matthew", "./assets/matthew-sprite.png", { frameWidth: 32, frameHeight: 32 })
 }
 
 //scene
@@ -36,13 +40,17 @@ function create() {
 
   gameState.active = true
   gameState.canMove = true
+  gameState.endWait = ""
 
   // background
   gameState.background = this.add.image(0, 0, "background").setOrigin(0)
 
   //sounds
   gameState.sfx = {}
-  gameState.sfx.davidSound = this.sound.add("davidSound")
+  gameState.sfx.davidSound = this.sound.add("davidSound").setVolume(0.3)
+  gameState.sfx.davidSound2 = this.sound.add("davidSound2").setVolume(0.3)
+  gameState.sfx.guardian = this.sound.add("guardian-music")
+  gameState.sfx.crash = this.sound.add("crash").setVolume(0.1)
 
   //platforms
   const platforms = this.physics.add.staticGroup()
@@ -79,28 +87,30 @@ function create() {
   //player
   gameState.player = this.physics.add.sprite(150, 480, "sam")
 
-  //enemies
-  gameState.enemy = this.physics.add.sprite(150, 300, "david")
+  //matthew
+  gameState.matthew = this.physics.add.sprite(550, 350, "matthew").setScale(1.1)
+
+  //david
+  gameState.enemy = this.physics.add.sprite(150, 350, "david")
 
   //colliders
   this.physics.add.collider(gameState.player, platforms)
   this.physics.add.collider(gameState.enemy, platforms)
+  this.physics.add.collider(gameState.matthew, platforms)
+  this.physics.add.collider(gameState.player, gameState.matthew, () => {
+    gameState.matthew.follow = true
+  })
   gameState.player.setCollideWorldBounds(true)
-  gameState.enemy.setCollideWorldBounds(true)
+  gameState.matthew.setCollideWorldBounds(true)
 
+  //player comes into contact with david
   this.physics.add.overlap(gameState.player, gameState.enemy, () => {
-    gameState.sfx.davidSound.play()
+    gameState.sfx.davidSound2.play()
     this.physics.pause()
-    gameState.enemy.move.pause()
+    gameState.enemy.move.stop()
     this.anims.pauseAll()
     gameState.canMove = false
-    if (gameState.enemy.body.touching.left) {
-      gameState.player.setFrame(9)
-      gameState.enemy.setFrame(2)
-    } else if (gameState.enemy.body.touching.right) {
-      gameState.player.setFrame(3)
-      gameState.enemy.setFrame(1)
-    }
+    gameState.endWait = gameState.timeLeft-5
   })
 
 
@@ -144,7 +154,30 @@ function create() {
   })
   gameState.enemy.anims.play("driving", true)
 
-  
+  // matthew animations
+  this.anims.create({
+    key: "run-left-m",
+    frames: this.anims.generateFrameNumbers("matthew", { start: 3, end: 5 }),
+    frameRate: 8,
+    repeat: -1
+  })
+  this.anims.create({
+    key: "run-right-m",
+    frames: this.anims.generateFrameNumbers("matthew", { start: 9, end: 11 }),
+    frameRate: 8,
+    repeat: -1
+  })
+  this.anims.create({
+    key: "dancing-m",
+    frames: this.anims.generateFrameNumbers("matthew", { start: 12, end: 14 }),
+    frameRate: 8,
+  })
+  this.anims.create({
+    key: "ladder-m",
+    frames: this.anims.generateFrameNumbers("matthew", { start: 6, end: 8 }),
+    frameRate: 8,
+    repeat: -1
+  })
 
   //camera
   this.cameras.main.setBounds(-20, -55, 607, 585)
@@ -163,7 +196,7 @@ function create() {
       if (gameState.cursors.space.isDown || gameState.cursors.up.isDown || gameState.cursors.w.isDown) {
         gameState.player.setVelocityY(-200)
         gameState.player.anims.play("ladder", true)
-      } else if (gameState.cursors.down.isDown || gameState.cursors.shift.isDown || gameState.cursors.s.isDown) {
+      } else if (gameState.cursors.down.isDown || gameState.cursors.s.isDown) {
         gameState.player.anims.play("falling", true)
         gameState.player.setVelocityY(250)
       } else if (checkKeysUp(gameState.cursors) && !(gameState.player.body.onFloor())){
@@ -172,7 +205,20 @@ function create() {
       }
   })
 
-  //move david
+  this.physics.add.overlap(gameState.matthew, ladders, () => {
+    if (gameState.cursors.space.isDown || gameState.cursors.up.isDown || gameState.cursors.w.isDown) {
+      gameState.matthew.setVelocityY(-200)
+      gameState.matthew.anims.play("ladder-m", true)
+    } else if (gameState.cursors.down.isDown || gameState.cursors.s.isDown) {
+      gameState.matthew.anims.play("falling-m", true)
+      gameState.matthew.setVelocityY(250)
+    } else if (checkKeysUp(gameState.cursors) && !(gameState.player.body.onFloor())){
+      gameState.matthew.setVelocityY(100)
+      gameState.matthew.anims.play("ladder-m", true)
+    }
+})
+
+  //david drives
   gameState.enemy.move = this.tweens.add({
     targets: gameState.enemy,
     x: 400,
@@ -182,6 +228,17 @@ function create() {
     yoyo: true,
   })
 
+  //david leaves
+  gameState.enemy.leave = this.tweens.add({
+    targets: gameState.enemy,
+    x: 1000,
+    ease: "Linear",
+    duration: 1500,
+    repeat: 1,
+  })
+  gameState.enemy.leave.pause()
+
+  //matthew follows
 }
 
 //gameplay
@@ -190,29 +247,70 @@ function update() {
     //update timer
     gameState.timeText.setText(`${formatTime(gameState.timeLeft)}`)
 
+    //check if David needs to leave
+
+    if (gameState.timeLeft===gameState.endWait+2) {
+      gameState.sfx.davidSound.play()
+    }
+    else if (gameState.timeLeft===gameState.endWait+1) {
+      gameState.enemy.setFrame(1)
+      gameState.enemy.leave.play()
+    }
+
+    //check if movements need enabling
+    if (gameState.timeLeft===gameState.endWait) {
+      gameState.canMove = true
+      this.physics.resume()
+      this.anims.resumeAll()
+    }
+
+    //stop matthew following
+    if (gameState.matthew.follow && gameState.cursors.shift.isDown) {
+      gameState.matthew.follow = false
+    }
+
     //travelling or idling
     if (gameState.canMove) {
       if (gameState.cursors.right.isDown || gameState.cursors.d.isDown) {
         gameState.player.setVelocityX(250)
         gameState.player.anims.play("run-right", true)
+        if (gameState.matthew.follow) {
+          gameState.matthew.setVelocityX(250)
+          gameState.matthew.anims.play("run-right-m", true)
+        }
       } else if (gameState.cursors.left.isDown || gameState.cursors.a.isDown) {
         gameState.player.setVelocityX(-250)
         gameState.player.anims.play("run-left", true)
+        if (gameState.matthew.follow) {
+          gameState.matthew.setVelocityX(-250)
+          gameState.matthew.anims.play("run-left-m", true)
+        }
       } 
       else if (checkKeysUp(gameState.cursors) && (gameState.player.body.onFloor())){
         gameState.player.anims.pause()
         gameState.player.setVelocityX(0) 
         gameState.player.setFrame(0)
+        if (gameState.matthew.follow) {
+          gameState.matthew.anims.pause()
+          gameState.matthew.setVelocityX(0) 
+          gameState.matthew.setFrame(0)
+        }
       }
         
       //jump
       if ((gameState.cursors.space.isDown || gameState.cursors.up.isDown || gameState.cursors.w.isDown) && (gameState.player.body.onFloor())) {
-        gameState.player.setVelocityY(-500);
+        gameState.player.setVelocityY(-500)
+        if (gameState.matthew.follow) {
+          gameState.matthew.setVelocityY(-500)
+        }
       }
     }
-    
 
-    // danger screen
+    if (gameState.timeLeft===11) {
+      gameState.sfx.guardian.play()
+    }
+
+    // danger screen show
     if (gameState.timeLeft<=10) {
       if (gameState.timeLeft%2===0) {
         gameState.dangerScreen.alpha = 0.4
@@ -228,6 +326,8 @@ function update() {
         gameState.loseText = this.add.text(150, 68, `You ran out of time! Click to try again.`, { fontFamily: "Arial", color: 0x1d97b5})
       ]
       loseElements.forEach((element) => { element.setScrollFactor(0, 0) })
+      gameState.sfx.guardian.stop()
+      gameState.sfx.crash.play()
       this.physics.pause()
       gameState.active = false
       this.anims.pauseAll()
