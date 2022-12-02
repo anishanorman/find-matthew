@@ -347,6 +347,13 @@ function update() {
 
     //win game
     if (gameState.win) {
+      let winElements = [ 
+        this.add.rectangle(286, 75, 572, 40, 0xd2d2d2),
+        gameState.winText = this.add.text(150, 68, `Yay, you made it in time! Well done!`, { fontFamily: "Arial", color: 0x1d97b5})
+      ]
+      winElements.forEach((element) => { element.setScrollFactor(0, 0) })
+      console.log(gameState.dangerScreen)
+      gameState.dangerScreen.setAlpha(0)
       gameState.matthew.win.play()
       gameState.player.win.play()
       gameState.sfx.guardian.stop()
