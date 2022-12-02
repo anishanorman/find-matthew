@@ -3,12 +3,12 @@ body {
   height: 100vh;
   width: 100vw;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  grid-template-rows: auto 1fr;
+  grid-template-columns: 1fr auto 250px 1fr;
+  grid-template-rows: auto auto 1fr;
 }
 
 header {
-  grid-column: 2 / 3;
+  grid-column: 2 / 4;
   text-align: center;
   background-color: #EEEEEE;
 }
@@ -16,4 +16,12 @@ header {
 canvas {
   grid-row: 2 / 3;
   grid-column: 2 / 3;
+}
+
+main {
+  grid-row: 2 / 3;
+  grid-column: 3 / 4;
+  padding: 20px;
+  display: inline;
+  background-color: #EEEEEE;
 }
