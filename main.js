@@ -1,6 +1,6 @@
 import Phaser from "phaser"
 
-let time = 21
+let time = 210
 let gameState = {
   timeLeft: time,
 }
@@ -12,6 +12,9 @@ function checkKeysUp(keys) {
     }
   }
   return true
+}
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 function formatTime(time) {
@@ -268,7 +271,7 @@ function create() {
 }
 
 //gameplay
-function update() {
+async function update() {
   if (gameState.active) {
     //update timer
     gameState.timeText.setText(`${formatTime(gameState.timeLeft)}`)
@@ -301,6 +304,7 @@ function update() {
         gameState.player.setVelocityX(250)
         gameState.player.anims.play("run-right", true)
         if (gameState.matthew.follow) {
+          await sleep(200)
           gameState.matthew.setVelocityX(250)
           gameState.matthew.anims.play("run-right-m", true)
         }
@@ -308,6 +312,7 @@ function update() {
         gameState.player.setVelocityX(-250)
         gameState.player.anims.play("run-left", true)
         if (gameState.matthew.follow) {
+          await sleep(200)
           gameState.matthew.setVelocityX(-250)
           gameState.matthew.anims.play("run-left-m", true)
         }
@@ -317,6 +322,7 @@ function update() {
         gameState.player.setVelocityX(0) 
         gameState.player.setFrame(0)
         if (gameState.matthew.follow) {
+          await sleep(200)
           gameState.matthew.anims.pause()
           gameState.matthew.setVelocityX(0) 
           gameState.matthew.setFrame(0)
@@ -327,6 +333,7 @@ function update() {
       if ((gameState.cursors.space.isDown || gameState.cursors.up.isDown || gameState.cursors.w.isDown) && (gameState.player.body.onFloor())) {
         gameState.player.setVelocityY(-500)
         if (gameState.matthew.follow) {
+          await sleep(200)
           gameState.matthew.setVelocityY(-500)
         }
       }
