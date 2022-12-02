@@ -1,7 +1,6 @@
 import Phaser from "phaser"
 
-let time = 20
-
+let time = 21
 let gameState = {
   timeLeft: time,
 }
@@ -35,15 +34,20 @@ function preload() {
   this.load.spritesheet("matthew", "./assets/matthew-sprite.png", { frameWidth: 32, frameHeight: 32 })
 }
 
-//scene
 function create() {
 
+  gameState.win = false
   gameState.active = true
   gameState.canMove = true
   gameState.endWait = ""
 
   // background
   gameState.background = this.add.image(0, 0, "background").setOrigin(0)
+
+  //win area
+  gameState.winArea = this.add.rectangle(500, 57, 140, 112, 0xFFFFFF)
+  this.physics.add.existing(gameState.winArea).setAlpha(0)
+  gameState.winArea.body.setAllowGravity(false)
 
   //sounds
   gameState.sfx = {}
@@ -61,9 +65,9 @@ function create() {
 
   //ladders
   const ladders = this.physics.add.staticGroup()
-  const ladderPositions = [489, 454, 419, 384, 349, 314, 279, 244, 209, 174, 139, 104, 69]
+  const ladderPositions = [493, 465, 437, 409, 381, 353, 325, 297, 269, 241, 213, 185, 157, 129, 101, 73]
   ladderPositions.forEach(y => {
-    ladders.create(18, y, 'ladder')
+    ladders.create(16, y, 'ladder')
   })
 
   //timer
@@ -85,7 +89,7 @@ function create() {
   gameState.dangerScreen = this.add.rectangle(286, 295, 500, 400, 0xFF0000).setScrollFactor(0, 0).setAlpha(0)
 
   //player
-  gameState.player = this.physics.add.sprite(150, 480, "sam")
+  gameState.player = this.physics.add.sprite(540, 90, "sam")
 
   //matthew
   gameState.matthew = this.physics.add.sprite(550, 350, "matthew").setScale(1.1)
@@ -94,9 +98,7 @@ function create() {
   gameState.enemy = this.physics.add.sprite(150, 350, "david")
 
   //colliders
-  this.physics.add.collider(gameState.player, platforms)
-  this.physics.add.collider(gameState.enemy, platforms)
-  this.physics.add.collider(gameState.matthew, platforms)
+  this.physics.add.collider([gameState.player, gameState.enemy, gameState.matthew], platforms)
   this.physics.add.collider(gameState.player, gameState.matthew, () => {
     gameState.matthew.follow = true
   })
@@ -131,6 +133,7 @@ function create() {
     key: "dancing",
     frames: this.anims.generateFrameNumbers("sam", { start: 12, end: 14 }),
     frameRate: 8,
+    repeat: -1
   })
   this.anims.create({
     key: "ladder",
@@ -171,6 +174,7 @@ function create() {
     key: "dancing-m",
     frames: this.anims.generateFrameNumbers("matthew", { start: 12, end: 14 }),
     frameRate: 8,
+    repeat: -1
   })
   this.anims.create({
     key: "ladder-m",
@@ -191,7 +195,7 @@ function create() {
   gameState.cursors.s = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S)
   gameState.cursors.d = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D)
 
-  // ladder overlap
+  // ladder overlap for sam
   this.physics.add.overlap(gameState.player, ladders, () => {
       if (gameState.cursors.space.isDown || gameState.cursors.up.isDown || gameState.cursors.w.isDown) {
         gameState.player.setVelocityY(-200)
@@ -204,7 +208,7 @@ function create() {
         gameState.player.anims.play("ladder", true)
       }
   })
-
+  // ladder overlap for matthew
   this.physics.add.overlap(gameState.matthew, ladders, () => {
     if (gameState.cursors.space.isDown || gameState.cursors.up.isDown || gameState.cursors.w.isDown) {
       gameState.matthew.setVelocityY(-200)
@@ -218,7 +222,7 @@ function create() {
     }
 })
 
-  //david drives
+  //david drives tween
   gameState.enemy.move = this.tweens.add({
     targets: gameState.enemy,
     x: 400,
@@ -228,7 +232,7 @@ function create() {
     yoyo: true,
   })
 
-  //david leaves
+  //david leaves tween
   gameState.enemy.leave = this.tweens.add({
     targets: gameState.enemy,
     x: 1000,
@@ -238,7 +242,29 @@ function create() {
   })
   gameState.enemy.leave.pause()
 
-  //matthew follows
+  //winning tweens
+  gameState.player.win = this.tweens.add({
+    targets: gameState.player,
+    x: 540,
+    y: 90,
+    ease: "Linear",
+    duration: 1000
+  })
+  gameState.player.win.pause()
+  gameState.matthew.win = this.tweens.add({
+    targets: gameState.matthew,
+    x: 460,
+    y: 95,
+    ease: "Linear",
+    duration: 500
+  })
+  gameState.matthew.win.pause()
+
+  //winArea overlap
+  gameState.winArea.setInteractive()
+  this.physics.add.overlap(gameState.matthew, gameState.winArea, () => {
+    gameState.win = true
+  })
 }
 
 //gameplay
@@ -318,8 +344,20 @@ function update() {
         gameState.dangerScreen.alpha = 0
       }
     }
+
+    //win game
+    if (gameState.win) {
+      gameState.matthew.win.play()
+      gameState.player.win.play()
+      gameState.sfx.guardian.stop()
+      gameState.enemy.move.stop()
+      gameState.matthew.anims.play("dancing-m", true)
+      gameState.player.anims.play("dancing", true)
+      this.physics.pause()
+      gameState.active = false
+    }
     
-    //end game
+    //lose game
     if (gameState.timeLeft===0) {
       let loseElements = [ 
         this.add.rectangle(286, 75, 572, 40, 0xd2d2d2),
@@ -339,6 +377,11 @@ function update() {
       })
     }
 
+  } else {
+    this.input.on("pointerup", () => {
+      gameState.timeLeft=time
+      this.scene.restart()
+    })
   }
 }
 
