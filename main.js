@@ -1,6 +1,6 @@
 import Phaser from "phaser"
 
-let time = 20
+let time = 30
 let gameState = {
   timeLeft: time,
 }
