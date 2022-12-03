@@ -1,6 +1,6 @@
 import Phaser from "phaser"
 
-let time = 210
+let time = 20
 let gameState = {
   timeLeft: time,
 }
@@ -251,7 +251,7 @@ function create() {
     x: 540,
     y: 90,
     ease: "Linear",
-    duration: 1000
+    duration: 500
   })
   gameState.player.win.pause()
   gameState.matthew.win = this.tweens.add({
@@ -359,7 +359,6 @@ async function update() {
         gameState.winText = this.add.text(150, 68, `Yay, you made it in time! Well done!`, { fontFamily: "Arial", color: 0x1d97b5})
       ]
       winElements.forEach((element) => { element.setScrollFactor(0, 0) })
-      console.log(gameState.dangerScreen)
       gameState.dangerScreen.setAlpha(0)
       gameState.matthew.win.play()
       gameState.player.win.play()
